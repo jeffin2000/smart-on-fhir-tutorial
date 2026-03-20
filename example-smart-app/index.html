@@ -1,346 +1,524 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta http-equiv='X-UA-Compatible' content='IE=edge' />
-  <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
-  <title>jeffin2000 - Richmond ED Clinical Decision Support</title>
-  <script src='https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js'></script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:14px}
-    /* Header */
-    .hdr{background:linear-gradient(135deg,#003d7a,#0066cc);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-    .hdr-logo{font-size:15px;font-weight:700}.hdr-sub{font-size:10px;opacity:.75;margin-top:2px}
-    /* Patient banner */
-    .ptbanner{background:#e8f4fd;padding:8px 20px;border-bottom:2px solid #0066cc;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
-    .ptname{font-size:17px;font-weight:700;color:#003d7a}
-    .pttag{font-size:11px;color:#555}.pttag strong{color:#003d7a}
-    /* Layout */
-    .layout{display:grid;grid-template-columns:1fr 355px;height:calc(100vh - 88px);overflow:hidden}
-    .lpanel{overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:11px}
-    .rpanel{background:#fff;border-left:1px solid #dde3ea;display:flex;flex-direction:column;overflow:hidden}
-    /* Cards */
-    .card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;border:1px solid #e8ecf0}
-    .ch{background:#003d7a;color:#fff;padding:7px 12px;font-size:11px;font-weight:700;letter-spacing:.3px}
-    .cb{padding:12px}
-    /* Encounter */
-    .encg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .ei label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.4px}
-    .ei .v{font-size:13px;font-weight:600;color:#1a1a2e;margin-top:2px}
-    /* Vitals */
-    .vgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-    .vc{background:#f7f9fc;border-radius:6px;padding:8px 5px;text-align:center;border:1px solid #e2e8f0}
-    .vc .vl{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.3px}
-    .vc .vv{font-size:20px;font-weight:700;color:#003d7a;margin:3px 0 1px}
-    .vc .vu{font-size:9px;color:#bbb}
-    .vc.abn{border-color:#fc8181;background:#fff5f5}.vc.abn .vv{color:#c53030}
-    /* Table */
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#f0f4f8;padding:6px 10px;text-align:left;font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;font-weight:600}
-    td{padding:6px 10px;border-bottom:1px solid #f0f0f0}
-    tr:hover td{background:#f8fafc}
-    .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600}
-    .bf{background:#e6ffed;color:#276749}.bo{background:#ebf4ff;color:#2b6cb0}
-    /* AI panel */
-    .aih{background:linear-gradient(135deg,#5a4fcf,#7c3aed);color:#fff;padding:10px 14px;flex-shrink:0}
-    .aih h3{font-size:13px;font-weight:700}.aih p{font-size:10px;opacity:.8;margin-top:2px}
-    .aim{flex:1;overflow-y:auto;padding:12px;background:#fafafa;display:flex;flex-direction:column;gap:10px}
-    .msg{max-width:88%}.msg.u{align-self:flex-end}.msg.a{align-self:flex-start}
-    .msg .fr{font-size:10px;color:#bbb;margin-bottom:3px}.msg.u .fr{text-align:right}
-    .bbl{padding:9px 12px;border-radius:12px;font-size:12px;line-height:1.55}
-    .msg.u .bbl{background:#5a4fcf;color:#fff;border-bottom-right-radius:3px}
-    .msg.a .bbl{background:#fff;border:1px solid #e2e8f0;color:#1a1a2e;border-bottom-left-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.06);white-space:pre-wrap}
-    .thnk{font-size:11px;color:#bbb;font-style:italic;padding:4px 12px}
-    .aif{padding:10px 12px;border-top:1px solid #eee;background:#fff;flex-shrink:0}
-    .airow{display:flex;gap:7px;align-items:flex-end}
-    .airow textarea{flex:1;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:12px;resize:none;font-family:inherit;min-height:50px}
-    .airow textarea:focus{outline:none;border-color:#5a4fcf}
-    .sbtn{background:#5a4fcf;color:#fff;border:none;border-radius:8px;padding:10px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
-    .sbtn:hover:not(:disabled){opacity:.85}.sbtn:disabled{background:#ccc;cursor:default}
-    .aifoot{font-size:10px;color:#bbb;text-align:center;margin-top:5px}
-    /* Key modal */
-    .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000}
-    .mbox{background:#fff;border-radius:12px;padding:26px 26px 22px;width:370px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-    .mbox h2{font-size:15px;color:#1a1a2e;margin-bottom:6px}.mbox p{font-size:12px;color:#666;margin-bottom:14px;line-height:1.6}
-    .mbox input{width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:12px;font-family:monospace;margin-bottom:10px}
-    .mbox input:focus{outline:none;border-color:#5a4fcf}
-    .mbtn{width:100%;background:#5a4fcf;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer}
-    .mbtn:hover{opacity:.88}.mnote{font-size:10px;color:#bbb;text-align:center;margin-top:7px}
-    /* Loading */
-    #loading{display:flex;align-items:center;justify-content:center;height:100vh;color:#666;gap:12px}
-    .spin{width:22px;height:22px;border:3px solid #e2e8f0;border-top-color:#5a4fcf;border-radius:50%;animation:sp .7s linear infinite}
-    @keyframes sp{to{transform:rotate(360deg)}}
-    #errors{background:#fff5f5;border-left:4px solid #e53e3e;padding:10px 14px;margin:8px;border-radius:4px;color:#742a2a;font-size:13px;display:none}
-    #app{display:none;height:100vh;flex-direction:column;overflow:hidden}
-  </style>
+<meta charset="utf-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VCH Richmond ED Clinical Decision Support</title>
+<script src='https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js'></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+#app{display:none}
+#loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#555}
+.spin{width:36px;height:36px;border:4px solid #ddd;border-top-color:#0066cc;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Header */
+#hdr{background:linear-gradient(135deg,#003087 0%,#0066cc 100%);color:#fff;padding:10px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+#hdr .logo{font-size:22px;font-weight:700;letter-spacing:.5px}
+#hdr .sub{font-size:12px;opacity:.85;margin-top:2px}
+#hdr .pt-banner{margin-left:auto;text-align:right;font-size:13px}
+#hdr .pt-name{font-size:16px;font-weight:700}
+.badge{display:inline-block;background:rgba(255,255,255,.2);border-radius:4px;padding:1px 6px;font-size:11px;margin-left:6px}
+
+/* Layout */
+#main{display:flex;height:calc(100vh - 54px);overflow:hidden}
+#left{flex:0 0 52%;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+#right{flex:1;display:flex;flex-direction:column;background:#fff;border-left:1px solid #ddd}
+
+/* Cards */
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.1);overflow:hidden}
+.card-hdr{background:#f8f9fa;padding:8px 12px;font-weight:600;font-size:13px;color:#003087;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:6px}
+.card-hdr .icon{font-size:15px}
+.card-body{padding:10px 12px}
+
+/* Encounter grid */
+.enc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.enc-item label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px}
+.enc-item span{font-size:13px;font-weight:600;display:block}
+
+/* Vitals grid */
+.vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vcard{background:#f8f9fa;border-radius:6px;padding:8px;text-align:center;border:1px solid #e8e8e8}
+.vcard .vval{font-size:20px;font-weight:700;color:#003087}
+.vcard .vunit{font-size:10px;color:#888;margin-top:1px}
+.vcard .vlbl{font-size:11px;color:#555;margin-top:2px}
+.vcard.abn{background:#fff5f5;border-color:#f8b4b4}
+.vcard.abn .vval{color:#c0392b}
+
+/* Tables */
+.ctable{width:100%;border-collapse:collapse;font-size:12px}
+.ctable th{background:#f1f3f5;padding:5px 8px;text-align:left;font-weight:600;color:#444;border-bottom:2px solid #dee2e6}
+.ctable td{padding:5px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+.ctable tr:hover td{background:#f8f9ff}
+.badge-status{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.bs-active{background:#d4edda;color:#155724}
+.bs-resolved{background:#e2e3e5;color:#383d41}
+.bs-chronic{background:#cce5ff;color:#004085}
+.bs-high{background:#f8d7da;color:#721c24}
+.bs-low{background:#fff3cd;color:#856404}
+.bs-moderate{background:#ffeaa7;color:#6d5a00}
+.bs-unknown{background:#e2e3e5;color:#383d41}
+.empty{color:#aaa;font-size:12px;padding:8px 0;font-style:italic}
+
+/* Chat panel */
+#chat-hdr{padding:10px 14px;background:#003087;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+#chat-hdr .ai-dot{width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:#fafbfc}
+.msg{max-width:88%;padding:9px 13px;border-radius:10px;font-size:13px;line-height:1.5}
+.msg.user{background:#003087;color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px}
+.msg.ai{background:#fff;border:1px solid #e0e0e0;align-self:flex-start;border-radius:10px 10px 10px 2px;color:#222}
+.msg.sys{background:#fffbe6;border:1px solid #ffe082;align-self:center;font-size:12px;color:#6d5a00;text-align:center;max-width:96%}
+#input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #eee;background:#fff}
+#uinput{flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;resize:none;height:40px}
+#uinput:focus{border-color:#0066cc}
+#sendbtn{background:#003087;color:#fff;border:none;border-radius:6px;padding:0 18px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s}
+#sendbtn:hover{background:#0055bb}
+#sendbtn:disabled{background:#aaa;cursor:not-allowed}
+
+/* Modal */
+#kmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
+#kmodal.show{display:flex}
+#kbox{background:#fff;border-radius:10px;padding:24px;width:420px;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+#kbox h3{margin-bottom:8px;color:#003087}
+#kbox p{font-size:13px;color:#555;margin-bottom:16px}
+#kapikey{width:100%;padding:9px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:12px}
+#ksubmit{background:#003087;color:#fff;border:none;border-radius:6px;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;width:100%}
+</style>
 </head>
 <body>
+<div id="loading"><div class="spin"></div><span>Loading patient data...</span></div>
 
-<!-- API Key Modal -->
-<div id="kmodal" class="moverlay" style="display:none">
-  <div class="mbox">
-    <h2>🔑 Connect Claude AI</h2>
-    <p>Enter your Anthropic API key to enable the AI assistant. It is stored only in this browser tab's memory — never saved to disk or sent anywhere except Anthropic's API.</p>
-    <input type="password" id="kinput" placeholder="sk-ant-api03-…" />
-    <button class="mbtn" onclick="submitKey()">Connect</button>
-    <div class="mnote">Get your key at console.anthropic.com · Never share it publicly</div>
+<div id="app">
+<!-- Header -->
+<div id="hdr">
+  <div>
+    <div class="logo">&#x1F3E5; VCH Richmond ED</div>
+    <div class="sub">Clinical Decision Support</div>
+  </div>
+  <div class="pt-banner">
+    <div class="pt-name" id="ptname">—</div>
+    <div id="ptmeta" style="font-size:12px;opacity:.85"></div>
   </div>
 </div>
 
-<div id="errors"></div>
-<div id="loading"><div class="spin"></div>Loading patient data…</div>
+<!-- Main -->
+<div id="main">
+<!-- LEFT: Clinical Data -->
+<div id="left">
 
-<div id="app">
-  <!-- Header -->
-  <div class="hdr">
-    <div>
-      <div class="hdr-logo">🏥 Richmond ED · Clinical Decision Support</div>
-      <div class="hdr-sub">Vancouver Coastal Health · Emergency Department · SMART on FHIR R4</div>
+<!-- Encounter -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">🏥</span> Current Encounter</div>
+  <div class="card-body">
+    <div class="enc-grid">
+      <div class="enc-item"><label>Type</label><span id="etype">—</span></div>
+      <div class="enc-item"><label>Status</label><span id="estat">—</span></div>
+      <div class="enc-item"><label>Admitted</label><span id="eadmit">—</span></div>
+      <div class="enc-item"><label>Location</label><span id="eloc">—</span></div>
+      <div class="enc-item"><label>Provider</label><span id="eprov">—</span></div>
+      <div class="enc-item"><label>Reason</label><span id="ereason">—</span></div>
     </div>
-    <div style="font-size:10px;opacity:.65" id="svr"></div>
   </div>
+</div>
 
-  <!-- Patient banner -->
-  <div class="ptbanner">
-    <span class="ptname" id="ptname">—</span>
-    <span class="pttag">MRN <strong id="ptmrn">—</strong></span>
-    <span class="pttag">DOB <strong id="ptdob">—</strong></span>
-    <span class="pttag">Sex <strong id="ptgender">—</strong></span>
-    <span class="pttag">Age <strong id="ptage">—</strong></span>
-  </div>
-
-  <!-- Main layout -->
-  <div class="layout">
-
-    <!-- Left: FHIR data -->
-    <div class="lpanel">
-
-      <!-- Encounter -->
-      <div class="card">
-        <div class="ch">🚪 Current Encounter</div>
-        <div class="cb">
-          <div class="encg">
-            <div class="ei"><label>Type</label><div class="v" id="etype">—</div></div>
-            <div class="ei"><label>Status</label><div class="v" id="estat">—</div></div>
-            <div class="ei"><label>Admitted</label><div class="v" id="eadmit">—</div></div>
-            <div class="ei"><label>Location</label><div class="v" id="eloc">—</div></div>
-            <div class="ei"><label>Provider</label><div class="v" id="eprov">—</div></div>
-            <div class="ei"><label>Reason</label><div class="v" id="ereason">—</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Vitals -->
-      <div class="card">
-        <div class="ch">📊 Vital Signs</div>
-        <div class="cb"><div class="vgrid" id="vgrid"><div style="color:#bbb;font-size:12px">Loading…</div></div></div>
-      </div>
-
-      <!-- Labs / Observations -->
-      <div class="card">
-        <div class="ch">🔬 Labs &amp; Observations</div>
-        <div class="cb" style="padding:0">
-          <table>
-            <thead><tr><th>Test</th><th>Result</th><th>Units</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody id="obsbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:#bbb">Loading…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div><!-- /lpanel -->
-
-    <!-- Right: AI chat -->
-    <div class="rpanel">
-      <div class="aih">
-        <h3>✨ AI Clinical Assistant</h3>
-        <p>Ask about this patient · Powered by Claude</p>
-      </div>
-      <div class="aim" id="aim">
-        <div class="msg a">
-          <div class="fr">Claude</div>
-          <div class="bbl">Patient data loading… Once ready I'll have full FHIR context for this encounter. Ask me about differentials, drug interactions, guidelines, or a quick clinical summary.</div>
-        </div>
-      </div>
-      <div class="aif">
-        <div class="airow">
-          <textarea id="ainput" rows="2" placeholder="e.g. What are the top differentials given these vitals?"></textarea>
-          <button class="sbtn" id="sbtn" onclick="send()">Send</button>
-        </div>
-        <div class="aifoot">Clinical decision support only · Always apply independent judgment</div>
-      </div>
+<!-- Vitals -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">📊</span> Vital Signs <span style="margin-left:auto;font-size:11px;font-weight:400;color:#888" id="vtime"></span></div>
+  <div class="card-body">
+    <div class="vgrid">
+      <div class="vcard" id="vc-hr"><div class="vval" id="v-hr">—</div><div class="vunit">bpm</div><div class="vlbl">Heart Rate</div></div>
+      <div class="vcard" id="vc-bp"><div class="vval" id="v-bp">—</div><div class="vunit">mmHg</div><div class="vlbl">Blood Pressure</div></div>
+      <div class="vcard" id="vc-rr"><div class="vval" id="v-rr">—</div><div class="vunit">br/min</div><div class="vlbl">Resp Rate</div></div>
+      <div class="vcard" id="vc-temp"><div class="vval" id="v-temp">—</div><div class="vunit">°C</div><div class="vlbl">Temperature</div></div>
+      <div class="vcard" id="vc-spo2"><div class="vval" id="v-spo2">—</div><div class="vunit">%</div><div class="vlbl">SpO₂</div></div>
+      <div class="vcard" id="vc-gcs"><div class="vval" id="v-gcs">—</div><div class="vunit">score</div><div class="vlbl">GCS / Pain</div></div>
     </div>
+  </div>
+</div>
 
-  </div><!-- /layout -->
-</div><!-- /app -->
+<!-- Allergies -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">⚠️</span> Allergies & Intolerances</div>
+  <div class="card-body" id="allergy-body">
+    <table class="ctable"><thead><tr><th>Substance</th><th>Reaction</th><th>Severity</th><th>Status</th></tr></thead>
+    <tbody id="allergy-rows"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Active Problems -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">🩺</span> Active Problems / Conditions</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Condition</th><th>Onset</th><th>Category</th><th>Status</th></tr></thead>
+    <tbody id="cond-rows"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Medications -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">💊</span> Current Medications</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Medication</th><th>Dose / Route</th><th>Frequency</th><th>Status</th></tr></thead>
+    <tbody id="med-rows"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Labs -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">🧪</span> Labs & Observations</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Range</th><th>Date</th></tr></thead>
+    <tbody id="obs-rows"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Procedures -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">🔬</span> Recent Procedures</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Procedure</th><th>Date</th><th>Status</th><th>Performer</th></tr></thead>
+    <tbody id="proc-rows"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Care Team -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">👥</span> Care Team</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead>
+    <tbody id="team-rows"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Immunizations -->
+<div class="card">
+  <div class="card-hdr"><span class="icon">💉</span> Immunizations</div>
+  <div class="card-body">
+    <table class="ctable"><thead><tr><th>Vaccine</th><th>Date</th><th>Status</th></tr></thead>
+    <tbody id="imm-rows"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+</div><!-- end #left -->
+
+<!-- RIGHT: AI Chat -->
+<div id="right">
+  <div id="chat-hdr"><div class="ai-dot"></div>AI Clinical Assistant (Claude)</div>
+  <div id="msgs">
+    <div class="msg sys">Patient data loaded. Ask any clinical question — allergies, drug interactions, treatment options, risk scores, or anything else.</div>
+  </div>
+  <div id="input-row">
+    <textarea id="uinput" placeholder="Ask about this patient..." rows="1"></textarea>
+    <button id="sendbtn" onclick="send()">Send</button>
+  </div>
+</div>
+
+</div><!-- end #main -->
+</div><!-- end #app -->
+
+<!-- API Key Modal -->
+<div id="kmodal">
+  <div id="kbox">
+    <h3>🔑 Anthropic API Key</h3>
+    <p>Enter your Anthropic API key to enable the AI assistant. It is only stored in memory for this session and never sent to any server other than api.anthropic.com.</p>
+    <input id="kapikey" type="password" placeholder="sk-ant-..."/>
+    <button id="ksubmit" onclick="setKey()">Connect AI</button>
+  </div>
+</div>
 
 <script>
-  var apiKey='', ptCtx='', hist=[], pending=null;
+var apiKey = '';
+var chatHistory = [];
+var ptContext = '';
 
-  // ── Key modal ───────────────────────────────────────────
-  function showModal(){
-    document.getElementById('kmodal').style.display='flex';
-    setTimeout(function(){document.getElementById('kinput').focus();},80);
-  }
-  function submitKey(){
-    var k=document.getElementById('kinput').value.trim();
-    if(!k.startsWith('sk-ant')){alert('That doesn\'t look like an Anthropic key (should start with sk-ant)');return;}
-    apiKey=k;
-    document.getElementById('kmodal').style.display='none';
-    send(true);
-  }
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&document.getElementById('kmodal').style.display==='flex') submitKey();
-  });
+function setKey(){
+  var k = document.getElementById('kapikey').value.trim();
+  if(!k.startsWith('sk-')) { alert('Key should start with sk-'); return; }
+  apiKey = k;
+  document.getElementById('kmodal').classList.remove('show');
+  addMsg('sys','AI assistant connected. Ready for clinical questions.');
+}
 
-  // ── Helpers ─────────────────────────────────────────────
-  function fmt(s){if(!s)return'—';return new Date(s).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'});}
-  function calcAge(d){if(!d)return'—';var t=new Date(),b=new Date(d),a=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))a--;return a+'y';}
-  function ptName(r){var n=r.name&&r.name[0];if(!n)return'Unknown';return[(n.given||[]).join(' '),n.family].filter(Boolean).join(' ');}
-  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-  function showErr(m){var e=document.getElementById('errors');e.style.display='block';e.textContent='⚠ '+m;document.getElementById('loading').style.display='none';}
+function addMsg(role, text){
+  var d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.textContent = text;
+  var msgs = document.getElementById('msgs');
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
-  // ── Vitals ──────────────────────────────────────────────
-  var VIT={'8867-4':{l:'HR',u:'bpm',lo:60,hi:100},'8480-6':{l:'BP sys',u:'mmHg',lo:90,hi:140},
-    '8462-4':{l:'BP dia',u:'mmHg',lo:60,hi:90},'9279-1':{l:'RR',u:'/min',lo:12,hi:20},
-    '8310-5':{l:'Temp',u:'°C',lo:36,hi:38},'59408-5':{l:'SpO2',u:'%',lo:95,hi:100},
-    '8302-2':{l:'Ht',u:'cm'},'29463-7':{l:'Wt',u:'kg'},'39156-5':{l:'BMI',u:'kg/m²'}};
-
-  function renderVitals(obs){
-    var grid=document.getElementById('vgrid'),seen={},html='';
-    obs.forEach(function(o){
-      var cs=(o.code&&o.code.coding)||[];
-      var c=null;for(var i=0;i<cs.length;i++){if(VIT[cs[i].code]){c=cs[i];break;}}
-      if(!c||seen[c.code])return; seen[c.code]=1;
-      var info=VIT[c.code];
-      var raw=o.valueQuantity?o.valueQuantity.value:(o.component&&o.component[0]&&o.component[0].valueQuantity?o.component[0].valueQuantity.value:null);
-      if(raw==null)return;
-      var v=parseFloat(raw),abn=info.lo&&(v<info.lo||v>info.hi);
-      html+='<div class="vc'+(abn?' abn':'')+'"><div class="vl">'+info.l+'</div><div class="vv">'+(v%1?v.toFixed(1):v)+'</div><div class="vu">'+info.u+'</div></div>';
+async function send(){
+  var inp = document.getElementById('uinput');
+  var msg = inp.value.trim();
+  if(!msg) return;
+  if(!apiKey){ document.getElementById('kmodal').classList.add('show'); return; }
+  inp.value = '';
+  addMsg('user', msg);
+  chatHistory.push({role:'user', content: msg});
+  document.getElementById('sendbtn').disabled = true;
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-allow-browser':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-opus-4-6',
+        max_tokens:1024,
+        system:'You are an AI clinical decision support assistant embedded in an Emergency Department EHR at VCH Richmond Hospital. You have access to the current patient data shown below. Provide concise, evidence-based clinical guidance. Always remind the clinician to use their own judgment. Flag critical allergies or drug interactions prominently.\n\nCurrent Patient Data:\n' + ptContext,
+        messages: chatHistory
+      })
     });
-    grid.innerHTML=html||'<div style="color:#bbb;font-size:12px">No vitals found.</div>';
+    var data = await res.json();
+    if(data.error){ addMsg('ai', 'API Error: ' + data.error.message); return; }
+    var reply = data.content[0].text;
+    chatHistory.push({role:'assistant', content: reply});
+    addMsg('ai', reply);
+  } catch(e){
+    addMsg('ai','Network error: ' + e.message);
+  } finally {
+    document.getElementById('sendbtn').disabled = false;
   }
+}
 
-  // ── Obs table ────────────────────────────────────────────
-  function renderObs(obs){
-    var vcodes={};Object.keys(VIT).forEach(function(k){vcodes[k]=1;});
-    var rows=obs.filter(function(o){return!((o.code&&o.code.coding)||[]).some(function(c){return vcodes[c.code];});});
-    if(!rows.length)rows=obs;
-    var tbody=document.getElementById('obsbody');
-    tbody.innerHTML=rows.slice(0,20).map(function(o){
-      var lbl=(o.code&&o.code.text)||(o.code&&o.code.coding&&o.code.coding[0]&&o.code.coding[0].display)||'—';
-      var val=o.valueQuantity?o.valueQuantity.value:(o.valueString||(o.valueCodeableConcept&&o.valueCodeableConcept.text)||'—');
-      var unit=(o.valueQuantity&&o.valueQuantity.unit)||'';
-      var st=o.status||'—';
-      return '<tr><td>'+esc(lbl)+'</td><td><strong>'+esc(val)+'</strong></td><td>'+esc(unit)+'</td><td>'+fmt(o.effectiveDateTime||o.issued)+'</td><td><span class="badge '+(st==='final'?'bf':'bo')+'">'+st+'</span></td></tr>';
-    }).join('')||'<tr><td colspan="5" style="text-align:center;padding:12px;color:#bbb">None found.</td></tr>';
-  }
+document.getElementById('uinput').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+});
 
-  // ── Build context string for Claude ──────────────────────
-  function buildCtx(pt,enc,obs){
-    var s='PATIENT (VCH Richmond ED — FHIR R4)\n';
-    s+='Name: '+ptName(pt)+', Age: '+calcAge(pt.birthDate)+', Sex: '+(pt.gender||'?')+', DOB: '+(pt.birthDate||'?')+'\n';
-    if(enc){
-      s+='\nENCOUNTER:\nType: '+((enc.type&&enc.type[0]&&enc.type[0].text)||(enc.class&&enc.class.display)||'ED visit')+'\n';
-      s+='Status: '+(enc.status||'?')+'\nAdmitted: '+fmt(enc.period&&enc.period.start)+'\n';
-      var loc=enc.location&&enc.location[0]&&enc.location[0].location&&enc.location[0].location.display;
-      if(loc)s+='Location: '+loc+'\n';
-      var rc=enc.reasonCode&&enc.reasonCode[0];
-      if(rc)s+='Reason: '+(rc.text||(rc.coding&&rc.coding[0]&&rc.coding[0].display)||'')+'\n';
+function fmt(val, fallback){ return (val !== undefined && val !== null && val !== '') ? val : (fallback || '—'); }
+function fmtDate(d){ if(!d) return '—'; try{ return new Date(d).toLocaleDateString('en-CA'); } catch(e){ return d; } }
+function getSev(sev){ if(!sev) return '<span class="badge-status bs-unknown">Unknown</span>'; var s=sev.toLowerCase(); if(s.includes('severe')||s.includes('high')) return '<span class="badge-status bs-high">'+sev+'</span>'; if(s.includes('moderate')) return '<span class="badge-status bs-moderate">'+sev+'</span>'; return '<span class="badge-status bs-low">'+sev+'</span>'; }
+
+FHIR.oauth2.ready().then(function(client){
+  var ptId = client.patient.id;
+
+  // Fetch all resources in parallel
+  Promise.allSettled([
+    client.patient.read(),
+    client.request('Observation?patient=' + ptId + '&_sort=-date&_count=30'),
+    client.request('Encounter?patient=' + ptId + '&_sort=-date&_count=1'),
+    client.request('AllergyIntolerance?patient=' + ptId + '&_count=20'),
+    client.request('Condition?patient=' + ptId + '&clinical-status=active&_count=20'),
+    client.request('MedicationRequest?patient=' + ptId + '&status=active&_count=20'),
+    client.request('Procedure?patient=' + ptId + '&_sort=-date&_count=15'),
+    client.request('CareTeam?patient=' + ptId + '&_count=5'),
+    client.request('Immunization?patient=' + ptId + '&_sort=-date&_count=10')
+  ]).then(function(results){
+    var ptRes      = results[0].status==='fulfilled' ? results[0].value : null;
+    var obsRes     = results[1].status==='fulfilled' ? results[1].value : null;
+    var encRes     = results[2].status==='fulfilled' ? results[2].value : null;
+    var allergyRes = results[3].status==='fulfilled' ? results[3].value : null;
+    var condRes    = results[4].status==='fulfilled' ? results[4].value : null;
+    var medRes     = results[5].status==='fulfilled' ? results[5].value : null;
+    var procRes    = results[6].status==='fulfilled' ? results[6].value : null;
+    var teamRes    = results[7].status==='fulfilled' ? results[7].value : null;
+    var immRes     = results[8].status==='fulfilled' ? results[8].value : null;
+
+    // === PATIENT ===
+    var ptName='Unknown', ptDob='—', ptGender='—', ptMrn='—', ptAge='—';
+    if(ptRes){
+      var n = ptRes.name && ptRes.name[0];
+      if(n){ ptName = [].concat(n.given||[]).concat([n.family||'']).join(' ').trim(); }
+      ptDob = fmtDate(ptRes.birthDate);
+      ptGender = ptRes.gender ? ptRes.gender.charAt(0).toUpperCase()+ptRes.gender.slice(1) : '—';
+      if(ptRes.birthDate){ var bd=new Date(ptRes.birthDate); var today=new Date(); ptAge=Math.floor((today-bd)/(365.25*24*3600*1000))+'y'; }
+      var mrn = ptRes.identifier && ptRes.identifier.find(function(i){ return i.type && i.type.text && i.type.text.toLowerCase().includes('mrn'); });
+      if(!mrn) mrn = ptRes.identifier && ptRes.identifier[0];
+      ptMrn = mrn ? (mrn.value||'—') : '—';
     }
-    if(obs.length){
-      s+='\nOBSERVATIONS:\n';
-      obs.slice(0,25).forEach(function(o){
-        var lbl=(o.code&&o.code.text)||(o.code&&o.code.coding&&o.code.coding[0]&&o.code.coding[0].display)||'?';
-        var val=o.valueQuantity?(o.valueQuantity.value+' '+(o.valueQuantity.unit||'')).trim():(o.valueString||(o.valueCodeableConcept&&o.valueCodeableConcept.text)||'?');
-        s+='- '+lbl+': '+val+'\n';
+    document.getElementById('ptname').textContent = ptName;
+    document.getElementById('ptmeta').textContent = 'MRN: '+ptMrn+' | DOB: '+ptDob+' | '+ptGender+' | Age: '+ptAge;
+
+    // === ENCOUNTER ===
+    var encEntry = encRes && encRes.entry && encRes.entry[0] && encRes.entry[0].resource;
+    if(encEntry){
+      var eType = encEntry.type && encEntry.type[0] && encEntry.type[0].coding && encEntry.type[0].coding[0] && encEntry.type[0].coding[0].display;
+      if(!eType) eType = encEntry.type && encEntry.type[0] && encEntry.type[0].text;
+      document.getElementById('etype').textContent = fmt(eType);
+      document.getElementById('estat').textContent = fmt(encEntry.status);
+      document.getElementById('eadmit').textContent = encEntry.period && encEntry.period.start ? fmtDate(encEntry.period.start) : '—';
+      var loc = encEntry.location && encEntry.location[0] && encEntry.location[0].location && encEntry.location[0].location.display;
+      document.getElementById('eloc').textContent = fmt(loc);
+      var prov = encEntry.participant && encEntry.participant[0] && encEntry.participant[0].individual && encEntry.participant[0].individual.display;
+      document.getElementById('eprov').textContent = fmt(prov);
+      var reason = encEntry.reasonCode && encEntry.reasonCode[0] && (encEntry.reasonCode[0].text || (encEntry.reasonCode[0].coding && encEntry.reasonCode[0].coding[0] && encEntry.reasonCode[0].coding[0].display));
+      document.getElementById('ereason').textContent = fmt(reason);
+    }
+
+    // === VITALS ===
+    var vitalCodes = {'8867-4':'hr','8480-6':'sbp','8462-4':'dbp','9279-1':'rr','8310-5':'temp','59408-5':'spo2','9269-2':'gcs','72514-3':'pain'};
+    var vmap = {};
+    if(obsRes && obsRes.entry){
+      obsRes.entry.forEach(function(e){
+        var r=e.resource;
+        var code = r.code && r.code.coding && r.code.coding[0] && r.code.coding[0].code;
+        if(code && vitalCodes[code] && !vmap[vitalCodes[code]]){
+          var val = r.valueQuantity ? r.valueQuantity.value : (r.valueString || '');
+          vmap[vitalCodes[code]] = {val:val, unit: r.valueQuantity && r.valueQuantity.unit, date:r.effectiveDateTime};
+        }
+        if(r.component){ r.component.forEach(function(c){ var cc=c.code&&c.code.coding&&c.code.coding[0]&&c.code.coding[0].code; if(cc&&vitalCodes[cc]&&!vmap[vitalCodes[cc]]){ vmap[vitalCodes[cc]]={val:c.valueQuantity&&c.valueQuantity.value, unit:c.valueQuantity&&c.valueQuantity.unit}; } }); }
       });
     }
-    return s;
-  }
-
-  // ── AI chat ───────────────────────────────────────────────
-  function addMsg(role,text){
-    var el=document.getElementById('aim');
-    el.innerHTML+='<div class="msg '+(role==='user'?'u':'a')+'"><div class="fr">'+(role==='user'?'You':'Claude')+'</div><div class="bbl">'+esc(text).replace(/\n/g,'<br>')+'</div></div>';
-    el.scrollTop=99999;
-  }
-
-  async function send(retry){
-    var inp=document.getElementById('ainput'),btn=document.getElementById('sbtn');
-    var msg=retry?pending:inp.value.trim();
-    if(!msg)return;
-    if(!apiKey){pending=msg;inp.value='';showModal();return;}
-    pending=null; inp.value=''; btn.disabled=true;
-    if(!retry)addMsg('user',msg);
-    hist.push({role:'user',content:msg});
-    var tid='t'+Date.now();
-    document.getElementById('aim').innerHTML+='<div id="'+tid+'" class="thnk">Claude is thinking…</div>';
-    document.getElementById('aim').scrollTop=99999;
-    try{
-      var res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-allow-browser':'true'},
-        body:JSON.stringify({model:'claude-opus-4-6',max_tokens:1024,
-          system:'You are a clinical AI assistant in the Emergency Department at VCH Richmond Hospital, BC, Canada. You have real-time FHIR patient context. Provide concise, accurate clinical decision support. Always note when clinical judgment should override your suggestions.\n\n'+ptCtx,
-          messages:hist})
-      });
-      document.getElementById(tid)&&document.getElementById(tid).remove();
-      if(!res.ok){var e=await res.json();throw new Error(e.error&&e.error.message||'HTTP '+res.status);}
-      var d=await res.json(),reply=d.content[0].text;
-      addMsg('assistant',reply);
-      hist.push({role:'assistant',content:reply});
-    }catch(e){
-      document.getElementById(tid)&&document.getElementById(tid).remove();
-      addMsg('assistant','⚠ API error: '+e.message);
-      console.error(e);
-    }
-    btn.disabled=false;
-  }
-
-  document.addEventListener('DOMContentLoaded',function(){
-    document.getElementById('ainput').addEventListener('keydown',function(e){
-      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
-    });
-  });
-
-  // ── SMART launch ──────────────────────────────────────────
-  FHIR.oauth2.ready(function(client){
-    document.getElementById('loading').style.display='none';
-    document.getElementById('app').style.display='flex';
-    document.getElementById('svr').textContent=client.state.serverUrl||'';
-    var pid=client.patient.id;
-    Promise.all([
-      client.request('Patient/'+pid),
-      client.request('Observation?patient='+pid+'&_sort=-date&_count=30'),
-      client.request('Encounter?patient='+pid+'&_sort=-date&_count=1')
-    ]).then(function(r){
-      var pt=r[0],obsB=r[1],encB=r[2];
-      // Patient banner
-      document.getElementById('ptname').textContent=ptName(pt);
-      document.getElementById('ptdob').textContent=fmt(pt.birthDate);
-      document.getElementById('ptgender').textContent=pt.gender||'—';
-      document.getElementById('ptage').textContent=calcAge(pt.birthDate);
-      var mrn=(pt.identifier||[]).filter(function(i){return i.type&&i.type.coding&&i.type.coding[0]&&i.type.coding[0].code==='MR';})[0];
-      document.getElementById('ptmrn').textContent=mrn?mrn.value:(pid.slice(0,10)+'…');
-      // Obs
-      var obs=(obsB.entry||[]).map(function(e){return e.resource;});
-      renderVitals(obs); renderObs(obs);
-      // Encounter
-      var enc=(encB.entry||[])[0]&&(encB.entry||[])[0].resource;
-      if(enc){
-        document.getElementById('etype').textContent=(enc.type&&enc.type[0]&&enc.type[0].text)||(enc.class&&enc.class.display)||'ED Visit';
-        document.getElementById('estat').textContent=enc.status||'—';
-        document.getElementById('eadmit').textContent=fmt(enc.period&&enc.period.start);
-        document.getElementById('eloc').textContent=(enc.location&&enc.location[0]&&enc.location[0].location&&enc.location[0].location.display)||'—';
-        var part=enc.participant&&enc.participant[0];
-        document.getElementById('eprov').textContent=(part&&part.individual&&part.individual.display)||'—';
-        var rc=enc.reasonCode&&enc.reasonCode[0];
-        document.getElementById('ereason').textContent=(rc&&rc.text)||(rc&&rc.coding&&rc.coding[0]&&rc.coding[0].display)||'—';
+    function setVital(id, vcid, valKey, lo, hi){
+      var v = vmap[valKey];
+      if(v && v.val !== undefined){
+        document.getElementById(id).textContent = Math.round(v.val*10)/10;
+        if(lo!==null && (v.val<lo||v.val>hi)) document.getElementById(vcid).classList.add('abn');
       }
-      ptCtx=buildCtx(pt,enc,obs);
-      document.getElementById('aim').innerHTML='<div class="msg a"><div class="fr">Claude</div><div class="bbl">Patient data loaded for <strong>'+esc(ptName(pt))+'</strong>. I have FHIR context for this encounter including vitals and observations.<br><br><em>Press Send to connect your Anthropic API key — stored in this tab only.</em></div></div>';
-    }).catch(function(e){showErr('Failed to load FHIR data: '+e.message);});
-  },function(e){showErr('SMART auth failed: '+e);});
+    }
+    var bpVal = '—';
+    if(vmap['sbp'] && vmap['dbp']) bpVal = Math.round(vmap['sbp'].val)+'/'+Math.round(vmap['dbp'].val);
+    else if(vmap['sbp']) bpVal = Math.round(vmap['sbp'].val)+'/—';
+    document.getElementById('v-bp').textContent = bpVal;
+    if(vmap['sbp'] && (vmap['sbp'].val>140||vmap['sbp'].val<90)) document.getElementById('vc-bp').classList.add('abn');
+    setVital('v-hr','vc-hr','hr',50,100);
+    setVital('v-rr','vc-rr','rr',12,20);
+    setVital('v-temp','vc-temp','temp',36.1,37.8);
+    setVital('v-spo2','vc-spo2','spo2',95,101);
+    if(vmap['gcs']) document.getElementById('v-gcs').textContent = Math.round(vmap['gcs'].val);
+    else if(vmap['pain']) document.getElementById('v-gcs').textContent = vmap['pain'].val+'/10';
+
+    // === ALLERGIES ===
+    var allergyEntries = allergyRes && allergyRes.entry ? allergyRes.entry : [];
+    var allergyHtml = '';
+    var allergyCtx = [];
+    allergyEntries.forEach(function(e){
+      var r=e.resource;
+      var sub = (r.code && (r.code.text || (r.code.coding&&r.code.coding[0]&&r.code.coding[0].display))) || '—';
+      var rxn = r.reaction && r.reaction[0] && r.reaction[0].manifestation && r.reaction[0].manifestation[0] && (r.reaction[0].manifestation[0].text || (r.reaction[0].manifestation[0].coding&&r.reaction[0].manifestation[0].coding[0]&&r.reaction[0].manifestation[0].coding[0].display));
+      var sev = r.reaction && r.reaction[0] && r.reaction[0].severity;
+      var stat = r.clinicalStatus && (r.clinicalStatus.text || (r.clinicalStatus.coding&&r.clinicalStatus.coding[0]&&r.clinicalStatus.coding[0].code)) || 'active';
+      allergyHtml += '<tr><td><strong>'+sub+'</strong></td><td>'+fmt(rxn)+'</td><td>'+getSev(sev)+'</td><td>'+stat+'</td></tr>';
+      allergyCtx.push(sub + (rxn?' ('+rxn+')':'') + (sev?' - '+sev:''));
+    });
+    document.getElementById('allergy-rows').innerHTML = allergyHtml || '<tr><td colspan="4" class="empty">No allergies on record</td></tr>';
+
+    // === CONDITIONS ===
+    var condEntries = condRes && condRes.entry ? condRes.entry : [];
+    var condHtml = '';
+    var condCtx = [];
+    condEntries.forEach(function(e){
+      var r=e.resource;
+      var name = (r.code && (r.code.text || (r.code.coding&&r.code.coding[0]&&r.code.coding[0].display))) || '—';
+      var onset = r.onsetDateTime ? fmtDate(r.onsetDateTime) : (r.onsetAge ? r.onsetAge.value+' '+r.onsetAge.unit : '—');
+      var cat = r.category && r.category[0] && (r.category[0].text || (r.category[0].coding&&r.category[0].coding[0]&&r.category[0].coding[0].display)) || '—';
+      var stat = r.clinicalStatus && (r.clinicalStatus.text || (r.clinicalStatus.coding&&r.clinicalStatus.coding[0]&&r.clinicalStatus.coding[0].code)) || 'active';
+      var badge = stat==='active'?'bs-active':stat==='resolved'?'bs-resolved':'bs-chronic';
+      condHtml += '<tr><td>'+name+'</td><td>'+onset+'</td><td>'+cat+'</td><td><span class="badge-status '+badge+'">'+stat+'</span></td></tr>';
+      condCtx.push(name);
+    });
+    document.getElementById('cond-rows').innerHTML = condHtml || '<tr><td colspan="4" class="empty">No active conditions found</td></tr>';
+
+    // === MEDICATIONS ===
+    var medEntries = medRes && medRes.entry ? medRes.entry : [];
+    var medHtml = '';
+    var medCtx = [];
+    medEntries.forEach(function(e){
+      var r=e.resource;
+      var medName = '—';
+      if(r.medicationCodeableConcept) medName = r.medicationCodeableConcept.text || (r.medicationCodeableConcept.coding&&r.medicationCodeableConcept.coding[0]&&r.medicationCodeableConcept.coding[0].display) || '—';
+      else if(r.medicationReference && r.medicationReference.display) medName = r.medicationReference.display;
+      var dose = r.dosageInstruction && r.dosageInstruction[0];
+      var doseText = dose && dose.doseAndRate && dose.doseAndRate[0] && dose.doseAndRate[0].doseQuantity ? (dose.doseAndRate[0].doseQuantity.value+' '+dose.doseAndRate[0].doseQuantity.unit) : (dose && dose.text ? dose.text : '—');
+      var route = dose && dose.route && (dose.route.text || (dose.route.coding&&dose.route.coding[0]&&dose.route.coding[0].display)) || '';
+      var freq = dose && dose.timing && dose.timing.code && (dose.timing.code.text || (dose.timing.code.coding&&dose.timing.code.coding[0]&&dose.timing.code.coding[0].display)) || '';
+      var stat = r.status || 'active';
+      medHtml += '<tr><td><strong>'+medName+'</strong></td><td>'+doseText+(route?' / '+route:'')+'</td><td>'+freq+'</td><td>'+stat+'</td></tr>';
+      medCtx.push(medName + (doseText&&doseText!=='—'?' '+doseText:''));
+    });
+    document.getElementById('med-rows').innerHTML = medHtml || '<tr><td colspan="4" class="empty">No active medications found</td></tr>';
+
+    // === LABS & OBSERVATIONS (non-vital) ===
+    var nonVitalCodes = Object.keys(vitalCodes);
+    var obsEntries = obsRes && obsRes.entry ? obsRes.entry : [];
+    var obsHtml = '';
+    var obsCtx = [];
+    var obsCount = 0;
+    obsEntries.forEach(function(e){
+      if(obsCount>=20) return;
+      var r=e.resource;
+      var code = r.code && r.code.coding && r.code.coding[0] && r.code.coding[0].code;
+      if(nonVitalCodes.indexOf(code)>=0) return;
+      var name = (r.code && (r.code.text || (r.code.coding&&r.code.coding[0]&&r.code.coding[0].display))) || '—';
+      var val = r.valueQuantity ? r.valueQuantity.value : (r.valueString || r.valueCodeableConcept && (r.valueCodeableConcept.text||(r.valueCodeableConcept.coding&&r.valueCodeableConcept.coding[0]&&r.valueCodeableConcept.coding[0].display)) || '—');
+      var unit = r.valueQuantity && r.valueQuantity.unit || '';
+      var lo = r.referenceRange && r.referenceRange[0] && r.referenceRange[0].low && r.referenceRange[0].low.value;
+      var hi = r.referenceRange && r.referenceRange[0] && r.referenceRange[0].high && r.referenceRange[0].high.value;
+      var rangeText = (lo!==undefined||hi!==undefined) ? ((lo||'?')+' – '+(hi||'?')) : '—';
+      var abn = r.interpretation && r.interpretation[0] && r.interpretation[0].coding && r.interpretation[0].coding[0] && r.interpretation[0].coding[0].code;
+      var td = r.effectiveDateTime || r.issued;
+      obsHtml += '<tr'+(abn&&abn!=='N'?' style="background:#fff9f0"':'')+'><td>'+name+'</td><td><strong>'+(val!==undefined?val:'—')+'</strong>'+(abn&&abn!=='N'?' ⚑':'')+'</td><td>'+unit+'</td><td>'+rangeText+'</td><td>'+fmtDate(td)+'</td></tr>';
+      obsCtx.push(name+': '+val+' '+unit);
+      obsCount++;
+    });
+    document.getElementById('obs-rows').innerHTML = obsHtml || '<tr><td colspan="5" class="empty">No lab results found</td></tr>';
+
+    // === PROCEDURES ===
+    var procEntries = procRes && procRes.entry ? procRes.entry : [];
+    var procHtml = '';
+    procEntries.forEach(function(e){
+      var r=e.resource;
+      var name = (r.code && (r.code.text || (r.code.coding&&r.code.coding[0]&&r.code.coding[0].display))) || '—';
+      var dt = r.performedDateTime || (r.performedPeriod && r.performedPeriod.start) || '';
+      var perf = r.performer && r.performer[0] && r.performer[0].actor && r.performer[0].actor.display || '—';
+      var stat = r.status || '—';
+      procHtml += '<tr><td>'+name+'</td><td>'+fmtDate(dt)+'</td><td>'+stat+'</td><td>'+perf+'</td></tr>';
+    });
+    document.getElementById('proc-rows').innerHTML = procHtml || '<tr><td colspan="4" class="empty">No procedures found</td></tr>';
+
+    // === CARE TEAM ===
+    var teamEntries = teamRes && teamRes.entry ? teamRes.entry : [];
+    var teamHtml = '';
+    teamEntries.forEach(function(e){
+      var r=e.resource;
+      var members = r.participant || [];
+      members.forEach(function(m){
+        var mname = m.member && m.member.display || '—';
+        var role = m.role && m.role[0] && (m.role[0].text || (m.role[0].coding&&m.role[0].coding[0]&&m.role[0].coding[0].display)) || '—';
+        var stat = r.status || '—';
+        teamHtml += '<tr><td>'+mname+'</td><td>'+role+'</td><td>'+stat+'</td></tr>';
+      });
+    });
+    document.getElementById('team-rows').innerHTML = teamHtml || '<tr><td colspan="3" class="empty">No care team data found</td></tr>';
+
+    // === IMMUNIZATIONS ===
+    var immEntries = immRes && immRes.entry ? immRes.entry : [];
+    var immHtml = '';
+    immEntries.forEach(function(e){
+      var r=e.resource;
+      var vax = (r.vaccineCode && (r.vaccineCode.text || (r.vaccineCode.coding&&r.vaccineCode.coding[0]&&r.vaccineCode.coding[0].display))) || '—';
+      var dt = r.occurrenceDateTime || r.occurrenceString || '—';
+      var stat = r.status || '—';
+      immHtml += '<tr><td>'+vax+'</td><td>'+fmtDate(dt)+'</td><td>'+stat+'</td></tr>';
+    });
+    document.getElementById('imm-rows').innerHTML = immHtml || '<tr><td colspan="3" class="empty">No immunization records found</td></tr>';
+
+    // === BUILD AI CONTEXT ===
+    ptContext = 'Patient: '+ptName+' | DOB: '+ptDob+' | '+ptGender+' | Age: '+ptAge+'\n';
+    if(allergyCtx.length) ptContext += 'ALLERGIES (⚠️ critical): '+allergyCtx.join('; ')+'\n';
+    else ptContext += 'ALLERGIES: None on record\n';
+    if(condCtx.length) ptContext += 'Active Problems: '+condCtx.join('; ')+'\n';
+    if(medCtx.length) ptContext += 'Current Medications: '+medCtx.join('; ')+'\n';
+    if(vmap['sbp']) ptContext += 'BP: '+bpVal+' mmHg\n';
+    if(vmap['hr']) ptContext += 'HR: '+vmap['hr'].val+' bpm\n';
+    if(vmap['spo2']) ptContext += 'SpO2: '+vmap['spo2'].val+'%\n';
+    if(vmap['temp']) ptContext += 'Temp: '+vmap['temp'].val+'°C\n';
+    if(obsCtx.length) ptContext += 'Labs: '+obsCtx.slice(0,10).join('; ')+'\n';
+
+    // Show app
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+  });
+}).catch(function(err){
+  document.getElementById('loading').innerHTML = '<div style="color:#c0392b;font-size:15px">⚠️ SMART launch error: '+err.message+'</div><div style="font-size:12px;color:#888;margin-top:8px">Ensure this app is launched from a SMART-enabled EHR or sandbox.</div>';
+});
 </script>
 </body>
 </html>
